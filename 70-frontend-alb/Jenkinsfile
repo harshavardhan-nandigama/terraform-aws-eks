@@ -8,8 +8,6 @@ pipeline {
         REGION = "us-east-1"
         ACC_ID = "607700977716"
         PROJECT = "roboshop"
-        STATE_BUCKET = "dawst-remote-state"
-        STATE_KEY = "roboshop-dev-ingress-alb"
     }
 
     options {
@@ -18,11 +16,19 @@ pipeline {
         ansiColor('xterm')
     }
 
+    /* parameters {
+        string(name: 'PERSON', defaultValue: 'Mr Jenkins', description: 'Who should I say hello to?')
+        text(name: 'BIOGRAPHY', defaultValue: '', description: 'Enter some information about the person')
+        booleanParam(name: 'TOGGLE', defaultValue: true, description: 'Toggle this value')
+        choice(name: 'CHOICE', choices: ['One', 'Two', 'Three'], description: 'Pick something')
+        password(name: 'PASSWORD', defaultValue: 'SECRET', description: 'Enter a password') 
+    } */
+
     stages {
         stage('init') {
             steps {
                 script {
-                    withAWS(credentials: 'aws-creds', region: "${REGION}") {
+                    withAWS(credentials: 'aws-creds', region: 'us-east-1') {
                         sh """
                             cd 70-frontend-alb
                             terraform init -reconfigure
@@ -32,33 +38,13 @@ pipeline {
             }
         }
 
-        stage('unlock-if-needed') {
-            steps {
-                script {
-                    withAWS(credentials: 'aws-creds', region: "${REGION}") {
-                        sh """
-                            cd 70-frontend-alb
-                            # Check if lock file exists in S3
-                            if aws s3 ls s3://$STATE_BUCKET/$STATE_KEY.tflock >/dev/null 2>&1; then
-                                echo "Terraform lock file found in S3, forcing unlock..."
-                                # Try unlocking with a random UUID (Terraform ignores if ID doesn't match)
-                                terraform force-unlock -force \$(uuidgen) || true
-                            else
-                                echo "No lock file exists in S3, skipping unlock"
-                            fi
-                        """
-                    }
-                }
-            }
-        }
-
         stage('plan') {
             steps {
                 script {
-                    withAWS(credentials: 'aws-creds', region: "${REGION}") {
+                    withAWS(credentials: 'aws-creds', region: 'us-east-1') {
                         sh """
                             cd 70-frontend-alb
-                            terraform plan -input=false
+                            terraform plan
                         """
                     }
                 }
@@ -68,10 +54,10 @@ pipeline {
         stage('apply') {
             steps {
                 script {
-                    withAWS(credentials: 'aws-creds', region: "${REGION}") {
+                    withAWS(credentials: 'aws-creds', region: 'us-east-1') {
                         sh """
                             cd 70-frontend-alb
-                            terraform apply -input=false -auto-approve || exit 1
+                            terraform apply -auto-approve
                         """
                     }
                 }
@@ -88,7 +74,6 @@ pipeline {
             echo 'Hello Success'
         }
         failure { 
-            sh 'cat 70-frontend-alb/terraform.tfstate || true'
             echo 'Hello Failure'
         }
     }
