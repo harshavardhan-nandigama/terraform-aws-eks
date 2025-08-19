@@ -8,6 +8,8 @@ pipeline {
         REGION = "us-east-1"
         ACC_ID = "607700977716"
         PROJECT = "roboshop"
+        STATE_BUCKET = "dawst-remote-state"
+        STATE_KEY = "roboshop-dev-ingress-alb"
     }
 
     options {
@@ -20,7 +22,7 @@ pipeline {
         stage('init') {
             steps {
                 script {
-                    withAWS(credentials: 'aws-creds', region: 'us-east-1') {
+                    withAWS(credentials: 'aws-creds', region: "${REGION}") {
                         sh """
                             cd 70-frontend-alb
                             terraform init -reconfigure
@@ -30,14 +32,20 @@ pipeline {
             }
         }
 
-        stage('unlock') {
+        stage('unlock-if-needed') {
             steps {
                 script {
-                    withAWS(credentials: 'aws-creds', region: 'us-east-1') {
+                    withAWS(credentials: 'aws-creds', region: "${REGION}") {
                         sh """
                             cd 70-frontend-alb
-                            # Force unlock any stale state lock (ignore errors if no lock)
-                            terraform force-unlock -force 0d15b7a5-d530-3490-a519-5ee3d46d586f || true
+                            # Check if lock file exists in S3
+                            if aws s3 ls s3://$STATE_BUCKET/$STATE_KEY.tflock >/dev/null 2>&1; then
+                                echo "Terraform lock file found in S3, forcing unlock..."
+                                # Try unlocking with a random UUID (Terraform ignores if ID doesn't match)
+                                terraform force-unlock -force \$(uuidgen) || true
+                            else
+                                echo "No lock file exists in S3, skipping unlock"
+                            fi
                         """
                     }
                 }
@@ -47,7 +55,7 @@ pipeline {
         stage('plan') {
             steps {
                 script {
-                    withAWS(credentials: 'aws-creds', region: 'us-east-1') {
+                    withAWS(credentials: 'aws-creds', region: "${REGION}") {
                         sh """
                             cd 70-frontend-alb
                             terraform plan -input=false
@@ -60,7 +68,7 @@ pipeline {
         stage('apply') {
             steps {
                 script {
-                    withAWS(credentials: 'aws-creds', region: 'us-east-1') {
+                    withAWS(credentials: 'aws-creds', region: "${REGION}") {
                         sh """
                             cd 70-frontend-alb
                             terraform apply -input=false -auto-approve || exit 1
