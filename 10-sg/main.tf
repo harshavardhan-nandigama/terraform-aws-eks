@@ -110,36 +110,36 @@ resource "aws_security_group_rule" "vpn_943" {
 
 resource "aws_security_group_rule" "eks_control_plane_eks_node" {
   type              = "ingress"
-  from_port         = 0
-  to_port           = 0
-  protocol          = "-1"
+  from_port        = 0
+  to_port          = 0
+  protocol         = "-1"
   source_security_group_id = module.eks_node.sg_id
   security_group_id = module.eks_control_plane.sg_id
 }
 
 resource "aws_security_group_rule" "eks_node_eks_control_plane" {
   type              = "ingress"
-  from_port         = 0
-  to_port           = 0
-  protocol          = "-1"
+  from_port        = 0
+  to_port          = 0
+  protocol         = "-1"
   source_security_group_id = module.eks_control_plane.sg_id
   security_group_id = module.eks_node.sg_id
 }
 
 resource "aws_security_group_rule" "eks_control_plane_bastion" {
   type              = "ingress"
-  from_port         = 443
-  to_port           = 443
-  protocol          = "tcp"
+  from_port        = 443
+  to_port          = 443
+  protocol         = "tcp"
   source_security_group_id = module.bastion.sg_id
   security_group_id = module.eks_control_plane.sg_id
 }
 
 resource "aws_security_group_rule" "eks_node_bastion" {
   type              = "ingress"
-  from_port         = 22
-  to_port           = 22
-  protocol          = "tcp"
+  from_port        = 22
+  to_port          = 22
+  protocol         = "tcp"
   source_security_group_id = module.bastion.sg_id
   security_group_id = module.eks_node.sg_id
 }
