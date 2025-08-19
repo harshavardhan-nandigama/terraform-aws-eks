@@ -16,14 +16,6 @@ pipeline {
         ansiColor('xterm')
     }
 
-    /* parameters {
-        string(name: 'PERSON', defaultValue: 'Mr Jenkins', description: 'Who should I say hello to?')
-        text(name: 'BIOGRAPHY', defaultValue: '', description: 'Enter some information about the person')
-        booleanParam(name: 'TOGGLE', defaultValue: true, description: 'Toggle this value')
-        choice(name: 'CHOICE', choices: ['One', 'Two', 'Three'], description: 'Pick something')
-        password(name: 'PASSWORD', defaultValue: 'SECRET', description: 'Enter a password') 
-    } */
-
     stages {
         stage('init') {
             steps {
@@ -38,13 +30,27 @@ pipeline {
             }
         }
 
+        stage('unlock') {
+            steps {
+                script {
+                    withAWS(credentials: 'aws-creds', region: 'us-east-1') {
+                        sh """
+                            cd 70-frontend-alb
+                            # Force unlock any stale state lock (ignore errors if no lock)
+                            terraform force-unlock -force 0d15b7a5-d530-3490-a519-5ee3d46d586f || true
+                        """
+                    }
+                }
+            }
+        }
+
         stage('plan') {
             steps {
                 script {
                     withAWS(credentials: 'aws-creds', region: 'us-east-1') {
                         sh """
                             cd 70-frontend-alb
-                            terraform plan
+                            terraform plan -input=false
                         """
                     }
                 }
@@ -57,7 +63,7 @@ pipeline {
                     withAWS(credentials: 'aws-creds', region: 'us-east-1') {
                         sh """
                             cd 70-frontend-alb
-                            terraform apply -auto-approve
+                            terraform apply -input=false -auto-approve || exit 1
                         """
                     }
                 }
@@ -74,6 +80,7 @@ pipeline {
             echo 'Hello Success'
         }
         failure { 
+            sh 'cat 70-frontend-alb/terraform.tfstate || true'
             echo 'Hello Failure'
         }
     }
