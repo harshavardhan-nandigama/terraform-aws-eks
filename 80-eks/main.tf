@@ -28,7 +28,7 @@ module "eks" {
   eks_managed_node_groups = {
     blue = {
       ami_type       = "AL2023_x86_64_STANDARD"
-      instance_types = ["m5.xlarge"]
+      instance_types = ["c7i-flex.large"]
 
       min_size     = 2
       max_size     = 10
